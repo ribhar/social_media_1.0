@@ -13,6 +13,10 @@ const envVarsSchema = Joi.object()
     // Database
     DB_URI: Joi.string().required(),
 
+    // Redis
+    REDIS_HOST: Joi.string().required(),
+    REDIS_PORT: Joi.number().required(),
+
     // JWT
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
     JWT_VERIFICATION_SECRET: Joi.string().required().description('email verification secret key'),
@@ -40,6 +44,10 @@ module.exports = {
   db:{
     dbURI: envVars.DB_URI,
   },
+  redis: {
+    host: envVars.REDIS_HOST,
+    port: envVars.REDIS_PORT,
+  },
   jwt: {
     secret: envVars.JWT_SECRET,
     verificationSecret: envVars.JWT_VERIFICATION_SECRET,
@@ -54,5 +62,5 @@ module.exports = {
     bucket: envVars.AWS_BUCKET,
     bucketBaseUrl: envVars.AWS_BUCKET_BASE_URL,
   },
-
+  
 };

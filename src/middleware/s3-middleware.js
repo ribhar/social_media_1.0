@@ -1,7 +1,7 @@
 const multer = require("multer");
 const multerS3 = require("multer-s3");
 const { aws } = require("../configs/config");
-const s3 = require("../configs/s3");
+const s3 = require("../configs/s3.config");
 const commonValidations = require("../validations/common/common.validations");
 
 // Function to upload to S3

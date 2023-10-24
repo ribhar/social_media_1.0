@@ -1,4 +1,6 @@
 const { postModel, mediaUrlModel, commentModel, likesModel, userModel } = require("../models");
+const redisClient = require('../configs/redis.config');
+
 
 const catchAsync = require("../utils/catchAsync");
 
@@ -7,58 +9,55 @@ class PostController {
   postRouterHome = catchAsync(async (req, res) => {
     res.send("Home Post Page");
   });
-
-  allPost = catchAsync(async (req, res) => {
-    // Fetch all posts, and populate author, comments, and likes
-    const posts = await postModel.find()
-      .sort({ createdAt: -1 })
-      .populate({
-        path: "author",
-        model: userModel, 
-        select: "username photoURL",
-      })
-      .populate({
-        path: "comments",
-        model: commentModel, 
-        populate: {
-          path: "author",
-          model: userModel, 
-          select: "username photoURL",
-        },
-      })
-      .populate({
-        path: "likes",
-        model: likesModel,
-        populate: {
-          path: "author",
-          model: userModel, 
-          select: "username photoURL",
-        },
-      })
-      .select("title description content createdAt comments likesCount"); 
   
-    res.status(200).json({
-      status: 200,
-      posts,
-      message: "Feed of all posts has been sent.",
+  allPost = catchAsync(async (req, res) => {
+    const cacheKey = 'all_posts';
+    redisClient.get(cacheKey, async (err, result) => {
+      if (result) {
+        return res.status(200).json({
+          status: 200,
+          posts: JSON.parse(result),
+          message: "Feed of all posts has been sent from Redis cache.",
+        });
+      } else {
+        const posts = await postModel.find()
+          .sort({ createdAt: -1 })
+          .populate(/*...*/)
+          .select("title description content createdAt comments likesCount");
+
+          redisClient.setex(cacheKey, 3600, JSON.stringify(posts)); // Set cache for 1 hour
+
+        return res.status(200).json({
+          status: 200,
+          posts,
+          message: "Feed of all posts has been sent.",
+        });
+      }
     });
   });
 
-
   singlePost = catchAsync(async (req, res) => {
     const id = req.params.id;
-    const post = await postModel.findById(id).populate([
-      { path: "author", model: "user" },
-      {
-        path: "comments",
-        model: "Comment",
-        populate: {
-          path: "author",
-          model: "user",
-        },
-      },
-    ]);
-    res.status(200).json({ status: 200, post, message: "Post has been sent." });
+    const cacheKey = `post_${id}`;
+    redisClient.get(cacheKey, async (err, result) => {
+      if (result) {
+        return res.status(200).json({
+          status: 200,
+          post: JSON.parse(result),
+          message: "Post has been sent from Redis cache.",
+        });
+      } else {
+        const post = await postModel.findById(id).populate(/*...*/);
+
+        redisClient.setex(cacheKey, 3600, JSON.stringify(post)); // Set cache for 1 hour
+
+        return res.status(200).json({
+          status: 200,
+          post,
+          message: "Post has been sent.",
+        });
+      }
+    });
   });
 
   singleUserAllPost = catchAsync(async (req, res) => {

@@ -1,10 +1,11 @@
 const express = require("express");
-const passport = require('./configs/passport'); 
+const passport = require('./configs/passport.config'); 
 const session = require('express-session');
 const cors = require("cors");
 const { connection } = require("./models");
 const router = require("./routes");
 const config = require('./configs/config')
+// const redisClient = require('./configs/redis.config') ;
 
 const app = express();
 
@@ -28,7 +29,7 @@ app.use(cors())
 
 app.use(express.json());
 
-app.use('/', router)
+app.use('/api', router)
 
 app.listen(config.port, async () => {
      try {
