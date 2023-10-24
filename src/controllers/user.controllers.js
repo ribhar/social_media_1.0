@@ -4,25 +4,37 @@ const bcrypt = require('bcrypt');
 const catchAsync = require("../utils/catchAsync");
 const { userModel, followModel, postModel } = require("../models");
 const { deleteFileFromS3 } = require('../middleware/s3-middleware');
+const redisClient = require('../configs/redis.config');
 
 class UserController {
   // Fetch user details by ID
   userDetail = catchAsync(async (req, res) => {
     const id = req.params.id;
-    const user = await userModel.findById(id);
-    res.status(200).json({ msg: "User details fetched", credentials: user });
+    const cacheKey = `user_detail_${id}`;
+    redisClient.get(cacheKey, async (err, result) => {
+      if (result) {
+        return res.status(200).json({ msg: "User details fetched from Redis cache", credentials: JSON.parse(result) });
+      } else {
+        const user = await userModel.findById(id);
+        redisClient.setex(cacheKey, 3600, JSON.stringify(user)); // Set cache for 1 hour
+        return res.status(200).json({ msg: "User details fetched", credentials: user });
+      }
+    });
   });
 
   // Search for users based on a query parameter
   userQuery = catchAsync(async (req, res) => {
     const { user } = req.query;
-    const FindUser = await userModel.find({
-      $or: [
-        { username: { $regex: user || "", $options: "i" } },
-        { email: { $regex: user || "", $options: "i" } },
-      ],
+    const cacheKey = `user_query_${user}`;
+    redisClient.get(cacheKey, async (err, result) => {
+      if (result) {
+        return res.status(200).json({ msg: "User details fetched from Redis cache", users: JSON.parse(result) });
+      } else {
+        const FindUser = await userModel.find({ $or: [{ username: { $regex: user || "", $options: "i" } }, { email: { $regex: user || "", $options: "i" } },],});
+        redisClient.setex(cacheKey, 3600, JSON.stringify(FindUser)); // Set cache for 1 hour
+        return res.status(200).json({ msg: "User details fetched", users: FindUser });
+      }
     });
-    res.status(200).json({ msg: "User details fetched", users: FindUser });
   });
 
   // Handle user registration
